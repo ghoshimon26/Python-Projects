@@ -1,0 +1,472 @@
+import numpy as np
+import pandas as pd
+HeartDiseaseData=pd.read_csv('D:/Imon_Files/Python/heart.csv', encoding='latin')
+print("Shape before deleting duplicate values:", HeartDiseaseData.shape)
+
+#removing duplicate rows if any
+HeartDiseaseData=HeartDiseaseData.drop_duplicates()
+print("Shape after deleting duplicate values:", HeartDiseaseData.shape)
+
+#observing sample data
+HeartDiseaseData.head(10)
+
+Shape before deleting duplicate values: (303, 14)
+Shape after deleting duplicate values: (302, 14)
+ï»¿age	sex	cp	trestbps	chol	fbs	restecg	thalach	exang	oldpeak	slope	ca	thal	target
+0	63	1	3	145	233	1	0	150	0	2.3	0	0	1	1
+1	37	1	2	130	250	0	1	187	0	3.5	0	0	2	1
+2	41	0	1	130	204	0	0	172	0	1.4	2	0	2	1
+3	56	1	1	120	236	0	1	178	0	0.8	2	0	2	1
+4	57	0	0	120	354	0	1	163	1	0.6	2	0	2	1
+5	57	1	0	140	192	0	1	148	0	0.4	1	0	1	1
+6	56	0	1	140	294	0	0	153	0	1.3	1	0	2	1
+7	44	1	1	120	263	0	1	173	0	0.0	2	0	3	1
+8	52	1	2	172	199	1	1	162	0	0.5	2	0	3	1
+9	57	1	2	150	168	0	1	174	0	1.6	2	0	2	1
+Problem Statement
+Create a Predictive model that can tell which patient is more likely to have a heart disease based on various medical attributes
+
+Target Variable - target
+
+target= 0 - No heart disease target = 1 - Heart Disease
+
+Determining the type of Machine Learning
+Based on the problem statement you can understand that we need to create a supervised ML classification model, as the target variable is categorical.
+
+Looking at the distribution of target variable
+%matplotlib inline
+​
+#creating a bar chart as the target variable is categorical
+GroupedData=HeartDiseaseData.groupby('target').size()
+GroupedData.plot(kind='bar', figsize=(4,3))
+<AxesSubplot:xlabel='target'>
+
+The data distribution of the target variable is satisfactory to proceed further. There are sufficient number of rows for each category to learn from.
+
+Basic Data Exploration
+HeartDiseaseData.info()
+<class 'pandas.core.frame.DataFrame'>
+Int64Index: 302 entries, 0 to 302
+Data columns (total 14 columns):
+ #   Column    Non-Null Count  Dtype  
+---  ------    --------------  -----  
+ 0   ï»¿age    302 non-null    int64  
+ 1   sex       302 non-null    int64  
+ 2   cp        302 non-null    int64  
+ 3   trestbps  302 non-null    int64  
+ 4   chol      302 non-null    int64  
+ 5   fbs       302 non-null    int64  
+ 6   restecg   302 non-null    int64  
+ 7   thalach   302 non-null    int64  
+ 8   exang     302 non-null    int64  
+ 9   oldpeak   302 non-null    float64
+ 10  slope     302 non-null    int64  
+ 11  ca        302 non-null    int64  
+ 12  thal      302 non-null    int64  
+ 13  target    302 non-null    int64  
+dtypes: float64(1), int64(13)
+memory usage: 35.4 KB
+HeartDiseaseData.rename(columns={'ï»¿age':'age'}, inplace=True)
+HeartDiseaseData.describe(include='all')
+age	sex	cp	trestbps	chol	fbs	restecg	thalach	exang	oldpeak	slope	ca	thal	target
+count	302.00000	302.000000	302.000000	302.000000	302.000000	302.000000	302.000000	302.000000	302.000000	302.000000	302.000000	302.000000	302.000000	302.000000
+mean	54.42053	0.682119	0.963576	131.602649	246.500000	0.149007	0.526490	149.569536	0.327815	1.043046	1.397351	0.718543	2.314570	0.543046
+std	9.04797	0.466426	1.032044	17.563394	51.753489	0.356686	0.526027	22.903527	0.470196	1.161452	0.616274	1.006748	0.613026	0.498970
+min	29.00000	0.000000	0.000000	94.000000	126.000000	0.000000	0.000000	71.000000	0.000000	0.000000	0.000000	0.000000	0.000000	0.000000
+25%	48.00000	0.000000	0.000000	120.000000	211.000000	0.000000	0.000000	133.250000	0.000000	0.000000	1.000000	0.000000	2.000000	0.000000
+50%	55.50000	1.000000	1.000000	130.000000	240.500000	0.000000	1.000000	152.500000	0.000000	0.800000	1.000000	0.000000	2.000000	1.000000
+75%	61.00000	1.000000	2.000000	140.000000	274.750000	0.000000	1.000000	166.000000	1.000000	1.600000	2.000000	1.000000	3.000000	1.000000
+max	77.00000	1.000000	3.000000	200.000000	564.000000	1.000000	2.000000	202.000000	1.000000	6.200000	2.000000	4.000000	3.000000	1.000000
+HeartDiseaseData.nunique()
+age          41
+sex           2
+cp            4
+trestbps     49
+chol        152
+fbs           2
+restecg       3
+thalach      91
+exang         2
+oldpeak      40
+slope         3
+ca            5
+thal          4
+target        2
+dtype: int64
+Basic Data Exploration
+categorical - sex, cp, fbs, restecg, exang, slope, ca,thal, target
+
+Visual Exploratory Data Analysis
+# Plotting multiple bar charts at once for categorical variables
+​
+def PlotBarCharts(inpData, colsToPlot):
+    %matplotlib inline
+    
+    import matplotlib.pyplot as plt
+    
+    # Generating multiple subplots
+    fig, subPlot=plt.subplots(nrows=1, ncols=len(colsToPlot), figsize=(20,5))
+    fig.suptitle('Bar charts of: '+ str(colsToPlot))
+​
+    for colName, plotNumber in zip(colsToPlot, range(len(colsToPlot))):
+        inpData.groupby(colName).size().plot(kind='bar',ax=subPlot[plotNumber])
+['sex', 'cp', 'fbs','restecg','exang', 'slope', 'ca', 'thal']
+#calling the function
+PlotBarCharts(inpData=HeartDiseaseData, colsToPlot=['sex', 'cp', 'fbs','restecg','exang', 'slope', 'ca', 'thal'])
+
+In this data, all the categorical columns except have satisfactory distribution to be considered for machine learning.
+
+Selected Categorical Variables: All the categorical variables are selected for further analysis.
+
+Visual Distribution of all the Continuous variable using Histogram
+HeartDiseaseData.hist(['age','trestbps','chol','thalach','oldpeak'], figsize=(18,5))
+array([[<AxesSubplot:title={'center':'age'}>,
+        <AxesSubplot:title={'center':'trestbps'}>],
+       [<AxesSubplot:title={'center':'chol'}>,
+        <AxesSubplot:title={'center':'thalach'}>],
+       [<AxesSubplot:title={'center':'oldpeak'}>, <AxesSubplot:>]],
+      dtype=object)
+
+Outlier Treatment
+HeartDiseaseData['chol'][HeartDiseaseData['chol']<430].sort_values(ascending=False)
+28     417
+246    409
+220    407
+96     394
+39     360
+      ... 
+267    149
+151    149
+53     141
+301    131
+111    126
+Name: chol, Length: 301, dtype: int64
+HeartDiseaseData['chol'][HeartDiseaseData['chol']>430]=417.0
+HeartDiseaseData['oldpeak'][HeartDiseaseData['oldpeak']<5].sort_values(ascending=False)
+291    4.4
+101    4.2
+250    4.2
+220    4.0
+295    4.0
+      ... 
+219    0.0
+22     0.0
+127    0.0
+130    0.0
+302    0.0
+Name: oldpeak, Length: 300, dtype: float64
+HeartDiseaseData['oldpeak'][HeartDiseaseData['oldpeak']>5]=4.4
+Visualizing distribution after outlier treatment
+HeartDiseaseData.hist(['age','trestbps','chol','thalach','oldpeak'], figsize=(18,5))
+array([[<AxesSubplot:title={'center':'age'}>,
+        <AxesSubplot:title={'center':'trestbps'}>],
+       [<AxesSubplot:title={'center':'chol'}>,
+        <AxesSubplot:title={'center':'thalach'}>],
+       [<AxesSubplot:title={'center':'oldpeak'}>, <AxesSubplot:>]],
+      dtype=object)
+
+Missing Values Treatment
+HeartDiseaseData.isnull().sum()
+age         0
+sex         0
+cp          0
+trestbps    0
+chol        0
+fbs         0
+restecg     0
+thalach     0
+exang       0
+oldpeak     0
+slope       0
+ca          0
+thal        0
+target      0
+dtype: int64
+Feature Selection
+Choosing the best columns that are correlated to the target variable using correlation values or ANOVA/Chi-Square tests
+
+In this case study the Target variable is categorical, hence below two scenarios will be present
+
+Categorical Target Variable Vs Continuous Predictor
+
+Categorical Target Variable Vs Categorical Predictor
+
+Relationship exploration: Categorical Vs Continuous -- Box Plots
+ContinuousColsList = ['age','trestbps','chol','thalach','oldpeak']
+​
+import matplotlib.pyplot as plt
+fig, PlotCanvas=plt.subplots(nrows=1, ncols=len(ContinuousColsList), figsize=(18,5))
+​
+for PredictorCol, i in zip(ContinuousColsList, range(len(ContinuousColsList))):
+    HeartDiseaseData.boxplot(column=PredictorCol, by='target', figsize=(5,5), vert=True, ax=PlotCanvas[i])
+
+We confirm this by looking at the results of ANOVA test below
+
+Statistical Feature Selection (Categorical Vs Continuous) using ANOVA test
+Assumption(H0): There is NO relation between the given variables (i.e. The average(mean) values of the numeric Predictor variable is same for all the groups in the categorical Target variable)
+
+ANOVA Test result: Probability of H0 being true
+
+def FunctionAnova(inpData, TargetVariable, ContinuousPredictorList):
+    from scipy.stats import f_oneway
+    
+    SelectedPredictors=[]
+    
+    print("###### ANOVA Results ###### \n")
+    for predictor in ContinuousPredictorList:
+        CategoryGroupsList=inpData.groupby(TargetVariable)[predictor].apply(list)
+        AnovaResults = f_oneway(*CategoryGroupsList)
+        
+         # If the ANOVA P-Value is <0.05, that means we reject H0
+        if (AnovaResults[1] < 0.05):
+            print(predictor, 'is correlated with', TargetVariable, '| P-Value:', AnovaResults[1])
+            SelectedPredictors.append(predictor)
+        else:
+            print(predictor, 'is not correlated with', TargetVariable, '| P-Value:', AnovaResults[1])
+    
+    return(SelectedPredictors)
+HeartDiseaseData
+#calling the function
+ContinuousVariables=['age', 'trestbps','chol','thalach','oldpeak']
+FunctionAnova(inpData=HeartDiseaseData, TargetVariable='target', ContinuousPredictorList=ContinuousVariables)
+###### ANOVA Results ###### 
+
+age is correlated with target | P-Value: 0.00010394837285417
+trestbps is correlated with target | P-Value: 0.010926538861949038
+chol is not correlated with target | P-Value: 0.10162875184380436
+thalach is correlated with target | P-Value: 2.4761460479235183e-14
+oldpeak is correlated with target | P-Value: 2.98895776437653e-15
+['age', 'trestbps', 'thalach', 'oldpeak']
+Final selected Continuous columns:
+
+'age', 'trestbps', 'thalach', 'oldpeak'
+
+Relationship exploration: Categorical Vs Categorical -- Grouped Bar Charts
+CrossTabResult=pd.crosstab(index=HeartDiseaseData['sex'], columns=HeartDiseaseData['target'])
+#cross tabulation between two categorical variables
+CrossTabResult=pd.crosstab(index=HeartDiseaseData['sex'], columns=HeartDiseaseData['target'])
+CrossTabResult
+target	0	1
+sex		
+0	24	72
+1	114	92
+HeartDiseaseData
+CategoricalColsList=['sex', 'cp', 'fbs','restecg','exang', 'slope', 'ca', 'thal']
+​
+import matplotlib.pyplot as plt
+fig, PlotCanvas=plt.subplots(nrows=len(CategoricalColsList), ncols=1, figsize=(10,30))
+​
+#creating grouped bars
+for CategoricalCol, i in zip(CategoricalColsList, range(len(CategoricalColsList))):
+    CrossTabResult=pd.crosstab(index=HeartDiseaseData[CategoricalCol], columns=HeartDiseaseData['target'])
+    CrossTabResult.plot.bar(color=['red','green'], ax=PlotCanvas[i], title=CategoricalCol+' Vs '+'target')
+
+If the ratio of bars is similar across all categories, then the two columns are not correlated.
+
+If the bars are different for each category, two columns are correlated with each other.
+
+We confirm this analysis in below section by using Chi-Square Tests.
+
+Statistical Feature Selection (Categorical Vs Categorical) using Chi-Square Test
+Chi-Square test is conducted to check the correlation between two categorical variables
+
+Assumption(H0): The two columns are NOT related to each other
+
+Result of Chi-Sq Test: The Probability of H0 being True
+
+CategoricalVariablesList
+#function to find the correlation of all categorical variables with the Target variable
+def FunctionChisq(inpData, TargetVariable, CategoricalVariablesList):
+    from scipy.stats import chi2_contingency
+    
+    SelectedPredictors=[]
+    
+    for predictor in CategoricalVariablesList:
+        CrossTabResult=pd.crosstab(index=inpData[TargetVariable], columns=inpData[predictor])
+        ChiSqResult=chi2_contingency(CrossTabResult)
+        
+        #If the ChiSq P-Value is <0.05, that means we reject H0
+        
+        if (ChiSqResult[1]<0.05):
+            print(predictor, 'is correlated with', TargetVariable, '| P-value:', ChiSqResult[1])
+            SelectedPredictors.append(predictor)
+        else:
+            print(predictor, 'is NOT correlated with', TargetVariable, '| P-Value:', ChiSqResult[1]) 
+            
+    return(SelectedPredictors)       
+HeartDiseaseData
+CategoricalVariables=['sex', 'cp', 'fbs','restecg','exang', 'slope', 'ca', 'thal']
+​
+#calling the function
+FunctionChisq(inpData=HeartDiseaseData, TargetVariable='target', CategoricalVariablesList=CategoricalVariables)
+sex is correlated with target | P-value: 1.5508552054949547e-06
+cp is correlated with target | P-value: 1.8926838351935918e-17
+fbs is NOT correlated with target | P-Value: 0.7611374700928197
+restecg is correlated with target | P-value: 0.007713053269318978
+exang is correlated with target | P-value: 9.556466486179178e-14
+slope is correlated with target | P-value: 6.5777827609179e-11
+ca is correlated with target | P-value: 3.771038067427657e-15
+thal is correlated with target | P-value: 3.146295138318122e-18
+['sex', 'cp', 'restecg', 'exang', 'slope', 'ca', 'thal']
+Selecting final predictors for Machine Learning
+Based on the above tests, selecting the final columns for machine learning
+
+HeartDiseaseData
+SelectedColumns=['sex', 'cp', 'restecg', 'exang', 'slope', 'ca', 'thal', 'age', 'trestbps', 'thalach', 'oldpeak']
+​
+#selecting final columns
+DataForML=HeartDiseaseData[SelectedColumns]
+DataForML.head()
+sex	cp	restecg	exang	slope	ca	thal	age	trestbps	thalach	oldpeak
+0	1	3	0	0	0	0	1	63	145	150	2.3
+1	1	2	1	0	0	0	2	37	130	187	3.5
+2	0	1	0	0	2	0	2	41	130	172	1.4
+3	1	1	1	0	2	0	2	56	120	178	0.8
+4	0	0	1	1	2	0	2	57	120	163	0.6
+# Saving this final data for reference during deployment
+DataForML.to_pickle('DataForML.pkl')
+Data Pre-processing for ML
+In this data there is no Ordinal categorical variable.
+
+# Treating all the nominal variables at once using dummy variables
+DataForML_Numeric=pd.get_dummies(DataForML)
+​
+# Adding Target Variable to the data
+DataForML_Numeric['target']=HeartDiseaseData['target']
+​
+# Printing sample rows
+DataForML_Numeric.head()
+sex	cp	restecg	exang	slope	ca	thal	age	trestbps	thalach	oldpeak	target
+0	1	3	0	0	0	0	1	63	145	150	2.3	1
+1	1	2	1	0	0	0	2	37	130	187	3.5	1
+2	0	1	0	0	2	0	2	41	130	172	1.4	1
+3	1	1	1	0	2	0	2	56	120	178	0.8	1
+4	0	0	1	1	2	0	2	57	120	163	0.6	1
+Machine Learning: Splitting the data into Training and Testing sample
+DataForML_Numeric
+#printing all columns for reference
+DataForML_Numeric.columns
+Index(['sex', 'cp', 'restecg', 'exang', 'slope', 'ca', 'thal', 'age',
+       'trestbps', 'thalach', 'oldpeak', 'target'],
+      dtype='object')
+#separating target and predictors
+TargetVariable='target'
+Predictors=['sex', 'cp', 'restecg', 'exang', 'slope', 'ca', 'thal', 'age',
+       'trestbps', 'thalach', 'oldpeak']
+​
+X=DataForML_Numeric[Predictors].values
+y=DataForML_Numeric[TargetVariable].values
+​
+#splitting the data into training and testing set
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=428)
+Logistic Regression
+from sklearn.linear_model import LogisticRegression
+​
+clf=LogisticRegression(C=5, penalty='l2', solver='newton-cg')
+​
+print(clf)
+​
+#creating model on training data
+LOG=clf.fit(X_train,y_train)
+prediction=LOG.predict(X_test)
+​
+#measuring accuracy on testing data
+from sklearn import metrics
+print(metrics.classification_report(y_test,prediction))
+print(metrics.confusion_matrix(prediction,y_test))
+​
+# Printing the Overall Accuracy of the model
+F1_Score=metrics.f1_score(y_test, prediction, average='weighted')
+print('Accuracy of the model on Testing Sample Data:', round(F1_Score,2))
+​
+#Importing cross validation function from sklearn
+from sklearn.model_selection import cross_val_score
+​
+#running 10-Fold Cross validation on a given algorithm
+Accuracy_Values=cross_val_score(LOG,X,y, cv=10, scoring='f1_weighted')
+​
+print('\nAccuracy values for 10 fold cross validation:\n', Accuracy_Values)
+print('\nFinal Average Accuracy of the model:', round(Accuracy_Values.mean(),2))
+LogisticRegression(C=5, solver='newton-cg')
+              precision    recall  f1-score   support
+
+           0       0.91      0.69      0.78        45
+           1       0.75      0.93      0.83        46
+
+    accuracy                           0.81        91
+   macro avg       0.83      0.81      0.81        91
+weighted avg       0.83      0.81      0.81        91
+
+[[31  3]
+ [14 43]]
+Accuracy of the model on Testing Sample Data: 0.81
+
+Accuracy values for 10 fold cross validation:
+ [0.86700623 0.77323775 0.83238095 0.9003367  0.86546003 0.79821429
+ 0.86546003 0.86546003 0.68766157 0.76588103]
+
+Final Average Accuracy of the model: 0.82
+Decision Trees
+from sklearn import tree
+​
+clf=tree.DecisionTreeClassifier(max_depth=3, criterion='entropy')
+​
+print(clf)
+​
+#creating the model on training data
+DTree=clf.fit(X_train, y_train)
+prediction=DTree.predict(X_test)
+​
+#Measuring accuracy on testing data
+from sklearn import metrics
+print(metrics.classification_report(y_test,prediction))
+print(metrics.confusion_matrix(y_test,prediction))
+​
+#printing the overall accuracy of the model
+F1_Score=metrics.f1_score(y_test, prediction, average='weighted')
+print('Accuracy of the model on testing sample data:', round(F1_Score,2))
+​
+# Plotting the feature importance for Top 10 most important columns
+%matplotlib inline
+feature_importances=pd.Series(DTree.feature_importances_, index=Predictors)
+feature_importances.nlargest(10).plot(kind='barh')
+​
+#importing cross validation function
+from sklearn.model_selection import cross_val_score
+​
+#running 10 fold cross validation
+Accuracy_Values=cross_val_score(DTree,X,y, cv=10, scoring='f1_weighted')
+print('\nAccuracy values for 10-fold Cross Validation:\n',Accuracy_Values)
+print('\nFinal Average Accuracy of the model:', round(Accuracy_Values.mean(),2))
+DecisionTreeClassifier(criterion='entropy', max_depth=3)
+              precision    recall  f1-score   support
+
+           0       0.86      0.67      0.75        45
+           1       0.73      0.89      0.80        46
+
+    accuracy                           0.78        91
+   macro avg       0.79      0.78      0.78        91
+weighted avg       0.79      0.78      0.78        91
+
+[[30 15]
+ [ 5 41]]
+Accuracy of the model on testing sample data: 0.78
+
+Accuracy values for 10-fold Cross Validation:
+ [0.80685484 0.80685484 0.89753231 0.8338945  0.79444444 0.86666667
+ 0.76692621 0.83047619 0.69485714 0.79819005]
+
+Final Average Accuracy of the model: 0.81
+
+Plotting Decision Trees
+dtreeplt
+!pip install dtreeplt
+
+from dtreeplt import dtreeplt
+import matplotlib.pyplot as plt
+​
+dtree=dtreeplt(model=clf, feature_names=Predictors, target_names=TargetVariable)
+fig=dtree.view()
+currentFigure=plt.gcf()
+currentFigure.set_size_inches(30,10)
